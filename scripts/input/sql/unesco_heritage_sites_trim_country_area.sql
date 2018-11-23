@@ -1,6 +1,7 @@
 -- WARNING: before running this script confirm that the foreign key names in the ALTER TABLE
 -- statement are correct before executing this script.
 --
+<<<<<<< HEAD
 -- Run the following SQL SELECT statement against the information_schema database to ascertain the
 -- foreign key constraint names for country_area.region_id, country_area.sub_region_id, and
 -- country_area.intermediate_region_id. Then adjust the names accordingly in the DROP FOREIGN KEY
@@ -26,6 +27,8 @@
 -- +--------------+------------------------+-----------------------------+-----------------------+------------------------+
 -- 8 rows in set, 2 warnings (0.00 sec)
 -- */
+=======
+>>>>>>> upstream/master
 
 -- Drop country_area region-related foreign keys and columns
 ALTER TABLE country_area

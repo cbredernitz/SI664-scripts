@@ -101,28 +101,3 @@ UPDATE country_area ca
           AND IFNULL(l.sub_region_id, 0) = IFNULL(ca.sub_region_id, 0)
           AND IFNULL(l.intermediate_region_id, 0) = IFNULL(ca.intermediate_region_id, 0)
        );
-
--- Compare results before dropping country_area region foreign keys
-SELECT CONCAT('CA: ', ca.country_area_name, ' ',
-       IFNULL(ca.region_id, 0), ' ',
-       IFNULL(ca.sub_region_id, 0), ' ',
-       IFNULL(ca.intermediate_region_id, 0)),
-       CONCAT('LOC: ',
-       IFNULL(l.region_id, 0), ' ',
-       IFNULL(l.sub_region_id, 0), ' ',
-       IFNULL(l.intermediate_region_id, 0))
-  FROM country_area ca
-       LEFT JOIN location l
-              ON ca.location_id = l.location_id
-  WHERE IFNULL(ca.region_id, 0) = IFNULL(l.region_id, 0)
-    AND IFNULL(ca.sub_region_id, 0) = IFNULL(l.sub_region_id, 0)
-    AND IFNULL(ca.intermediate_region_id, 0) = IFNULL(l.intermediate_region_id, 0)
-  ORDER BY ca.region_id, ca.sub_region_id, ca.intermediate_region_id, ca.country_area_name;
-
-
--- ASSIGNMENT: first run mysqldump and back up database.
--- ASSIGNMENT: create yaml file
--- ASSIGNMENT: ADD JERUSALEM "area" to country_area then update junction table SImple update with
--- where clause
--- ASSIGNMENT: ADD NEW Django Models GlobalModel and LocationModel (by hand)
--- ASSIGNMENT: Write SQL, write Django API

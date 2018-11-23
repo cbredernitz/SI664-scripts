@@ -85,6 +85,7 @@ def connect_to_db(config):
 
 	return MySQLdb.connect(
 		host=config['host'],
+		port=config['port'],
 		user=config['user'],
 		passwd=config['passwd'],
 		db=config['db'],
