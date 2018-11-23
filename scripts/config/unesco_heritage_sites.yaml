@@ -1,0 +1,10 @@
+################
+#   Database   #
+################
+
+mysql:
+  host: localhost
+  user: brederni
+  passwd: S2016cience
+  db: unesco_heritage_sites
+  local_infile: True

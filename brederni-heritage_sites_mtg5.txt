@@ -1,0 +1,91 @@
+
+## Part 1
+
+class CountryArea(models.Model):
+    country_area_id = models.AutoField(primary_key=True)
+    country_area_name = models.CharField(unique=True, max_length=100)
+    # region = models.ForeignKey('Region', models.DO_NOTHING, blank=True, null=True)
+    # sub_region = models.ForeignKey('SubRegion', models.DO_NOTHING, blank=True, null=True)
+    # intermediate_region = models.ForeignKey('IntermediateRegion', models.DO_NOTHING, blank=True, null=True)
+    m49_code = models.SmallIntegerField()
+    iso_alpha3_code = models.CharField(max_length=3)
+    location = models.ForeignKey('Location', models.DO_NOTHING, default=1)    
+    dev_status = models.ForeignKey('DevStatus', models.DO_NOTHING, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'country_area'
+        ordering = ['country_area_name']
+        verbose_name = 'UNSD M49 Country or Area'
+        verbose_name_plural = 'UNSD M49 Countries or Areas'
+
+    def __str__(self):
+        return self.country_area_name
+
+class Region(models.Model):
+    region_id = models.AutoField(primary_key=True)
+    region_name = models.CharField(unique=True, max_length=100)
+    planet = models.ForeignKey('Planet', models.DO_NOTHING, default=1)
+
+    class Meta:
+        managed = False
+        db_table = 'region'
+        ordering = ['region_name']
+        verbose_name = 'UNSD M49 Region'
+        verbose_name_plural = 'UNSD M49 Regions'
+
+    def __str__(self):
+        return self.region_name
+
+
+class Location(models.Model):
+    """
+    New model based on Mtg 5 refactoring of the database.
+    """
+    location_id = models.AutoField(primary_key=True)
+    planet = models.ForeignKey('Planet', models.DO_NOTHING)
+    region = models.ForeignKey('Region', models.DO_NOTHING, blank=True, null=True)
+    sub_region = models.ForeignKey('SubRegion', models.DO_NOTHING, blank=True, null=True)
+    intermediate_region = models.ForeignKey('IntermediateRegion', models.DO_NOTHING, blank=True, null=True)
+
+    class Meta:
+        managed = False  
+        db_table = 'location'
+        ordering = ['planet_id', 'region_id', 'sub_region_id', 'intermediate_region_id']
+        verbose_name = 'Location of Site'
+        verbose_name_plural = 'Locations of Sites'
+
+    def __str__(self):
+        return str(self.location_id)
+
+## Part 2
+
+mysql> SELECT r.region_name, sr.sub_region_name, ca.country_area_name, hs.site_name, hs.area_hectares FROM heritage_site hs LEFT JOIN heritage_site_jurisdiction hsj ON hs.heritage_site_id = hsj.heritage_site_id LEFT JOIN country_area ca ON hsj.country_area_id = ca.country_area_id LEFT JOIN location l ON ca.location_id = l.location_id LEFT JOIN region r ON l.region_id = r.region_id LEFT JOIN sub_region sr ON l.sub_region_id = sr.sub_region_id WHERE r.region_name LIKE 'Africa' ORDER BY hs.area_hectares DESC LIMIT 1;
++-------------+--------------------+-------------------+------------------------------------+---------------+
+| region_name | sub_region_name    | country_area_name | site_name                          | area_hectares |
++-------------+--------------------+-------------------+------------------------------------+---------------+
+| Africa      | Sub-Saharan Africa | Niger             | Air and Ténéré Natural Reserves    |       7736000 |
++-------------+--------------------+-------------------+------------------------------------+---------------+
+1 row in set (0.04 sec)
+
+Faster Query for Part 2:
+
+mysql> SELECT r.region_name, sr.sub_region_name, ca.country_area_name, hs.site_name, hs.area_hectares FROM heritage_site hs LEFT JOIN heritage_site_jurisdiction hsj ON hs.heritage_site_id = hsj.heritage_site_id LEFT JOIN country_area ca ON hsj.country_area_id = ca.country_area_id LEFT JOIN location l ON ca.location_id = l.location_id LEFT JOIN region r ON l.region_id = r.region_id LEFT JOIN sub_region sr ON l.sub_region_id = sr.sub_region_id WHERE hs.area_hectares = (SELECT MAX(hs.area_hectares)  FROM heritage_site hs  LEFT JOIN heritage_site_jurisdiction hsj ON hs.heritage_site_id = hsj.heritage_site_id LEFT JOIN country_area ca ON hsj.country_area_id = ca.country_area_id LEFT JOIN location l ON ca.location_id = l.location_id LEFT JOIN region r ON l.region_id = r.region_id WHERE r.region_name LIKE 'Africa');
++-------------+--------------------+-------------------+------------------------------------+---------------+
+| region_name | sub_region_name    | country_area_name | site_name                          | area_hectares |
++-------------+--------------------+-------------------+------------------------------------+---------------+
+| Africa      | Sub-Saharan Africa | Niger             | Air and Ténéré Natural Reserves    |       7736000 |
++-------------+--------------------+-------------------+------------------------------------+---------------+
+1 row in set (0.03 sec)
+
+## Part 3
+
+>>> from heritagesites.models import Location, Region, CountryArea, DevStatus
+>>> from django.db.models import Count
+>>> from django.db.models import F
+>>> loc = Location.objects.values(region_name = F('region__region_name'), dev_status = F('countryarea__dev_status__dev_status_name')).annotate(count=Count('countryarea__dev_status__dev_status_name')).filter(region__region_name = 'Asia').order_by('countryarea__dev_status__dev_status_name')
+>>> for i in loc:
+...     print(i)
+... 
+{'region_name': 'Asia', 'dev_status': 'Developed', 'count': 3}
+{'region_name': 'Asia', 'dev_status': 'Developing', 'count': 47}
