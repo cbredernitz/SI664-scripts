@@ -331,6 +331,42 @@ INTO TABLE tmp_review
 -- Review                                               NEEDS TO BE CHANGED - M2M
 --
 
+-- CREATE TABLE IF NOT EXISTS review
+--   (
+--     review_id INTEGER NOT NULL AUTO_INCREMENT UNIQUE,
+--     user_id INTEGER,
+--     business_id INTEGER,
+--     yelp_review_id VARCHAR(45),
+--     stars DECIMAL,
+--     date_created DATE,
+--     review_text TEXT,
+--     PRIMARY KEY (review_id),
+--     FOREIGN KEY (user_id) REFERENCES user(user_id)
+--     ON DELETE CASCADE ON UPDATE CASCADE,
+--     FOREIGN KEY (business_id) REFERENCES business(business_id)
+--     ON DELETE CASCADE ON UPDATE CASCADE
+--   )
+-- ENGINE=InnoDB
+-- CHARACTER SET utf8mb4
+-- COLLATE utf8mb4_0900_ai_ci;
+
+-- INSERT IGNORE INTO review (
+--     user_id,
+--     business_id,
+--     yelp_review_id,
+--     stars,
+--     date_created,
+--     review_text
+-- )
+-- SELECT trv.yelp_review_id, trv.stars, trv.date_created, trv.review_text, bs.business_id, usr.user_id
+--   FROM tmp_review trv
+--        INNER JOIN business bs
+--               ON TRIM(trv.yelp_business_id) = TRIM(bs.yelp_business_id)
+--        INNER JOIN user usr
+--               ON TRIM(trv.yelp_user_id) = TRIM(usr.yelp_user_id);
+
+
+
 CREATE TABLE IF NOT EXISTS review
   (
     review_id INTEGER NOT NULL AUTO_INCREMENT UNIQUE,
@@ -351,24 +387,24 @@ CHARACTER SET utf8mb4
 COLLATE utf8mb4_0900_ai_ci;
 
 INSERT IGNORE INTO review (
-    user_id,
     business_id,
     yelp_review_id,
     stars,
     date_created,
     review_text
 )
-SELECT trv.yelp_review_id, trv.stars, trv.date_created, trv.review_text, bs.business_id, usr.user_id
+SELECT trv.yelp_review_id, trv.stars, trv.date_created, trv.review_text, bs.business_id
   FROM tmp_review trv
        INNER JOIN business bs
-              ON TRIM(trv.yelp_business_id) = TRIM(bs.yelp_business_id)
+              ON TRIM(trv.yelp_business_id) = TRIM(bs.yelp_business_id);
+
+INSERT IGNORE INTO review (
+    user_id
+)
+SELECT usr.user_id
+  FROM tmp_review trv
        INNER JOIN user usr
               ON TRIM(trv.yelp_user_id) = TRIM(usr.yelp_user_id);
-
-
-
-
-
 
 
 
