@@ -16,12 +16,10 @@
 --
 
 SET FOREIGN_KEY_CHECKS=0;
-DROP TABLE IF EXISTS noise_level, category, attire, city, state, user, review, business, tmp_business, tmp_review;
+DROP TABLE IF EXISTS noise_level, attire, city, tmp_city, state, user, review, business, tmp_business, tmp_review;
 SET FOREIGN_KEY_CHECKS=1;
 
--- SET FOREIGN_KEY_CHECKS=0;
--- DROP TABLE IF EXISTS review;
--- SET FOREIGN_KEY_CHECKS=1;
+
 
 --
 -- Noise Level
@@ -39,6 +37,8 @@ COLLATE utf8mb4_0900_ai_ci;
 
 INSERT IGNORE INTO noise_level (noise) VALUES
   ('Average'), ('Loud'), ('Quiet'), ('Very Loud');
+
+
 
 -- --
 -- -- Attire
@@ -60,84 +60,6 @@ INSERT IGNORE INTO attire (attire) VALUES
   ('Formal');
 
 
--- --
--- -- Category
--- --
-
-CREATE TABLE IF NOT EXISTS category
-  (
-    category_id INTEGER NOT NULL AUTO_INCREMENT UNIQUE,
-    category VARCHAR(45) NOT NULL UNIQUE,
-    PRIMARY KEY (category_id)
-   )
-ENGINE=InnoDB
-CHARACTER SET utf8mb4
-COLLATE utf8mb4_0900_ai_ci;
-
--- Insert dev_status options
-LOAD DATA LOCAL INFILE './output/business_categories.csv'
-INTO TABLE category
-  CHARACTER SET utf8mb4
-  FIELDS TERMINATED BY '\t'
-  -- FIELDS TERMINATED BY ','
-  ENCLOSED BY '"'
-  LINES TERMINATED BY '\n'
-  -- LINES TERMINATED BY '\r\n'
-  IGNORE 1 LINES
-  (category);
-
--- --
--- -- State
--- --
-
-CREATE TABLE IF NOT EXISTS state
-  (
-    state_id INTEGER NOT NULL AUTO_INCREMENT UNIQUE,
-    state_abbrev VARCHAR(45) NOT NULL UNIQUE,
-    PRIMARY KEY (state_id)
-   )
-ENGINE=InnoDB
-CHARACTER SET utf8mb4
-COLLATE utf8mb4_0900_ai_ci;
-
--- Insert dev_status options
-LOAD DATA LOCAL INFILE './output/states.csv'
-INTO TABLE state
-  CHARACTER SET utf8mb4
-  FIELDS TERMINATED BY '\t'
-  -- FIELDS TERMINATED BY ','
-  ENCLOSED BY '"'
-  LINES TERMINATED BY '\n'
-  -- LINES TERMINATED BY '\r\n'
-  IGNORE 1 LINES
-  (state_abbrev);
-
---
--- City
---
- 
-CREATE TABLE IF NOT EXISTS city
-  (
-    city_id INTEGER NOT NULL AUTO_INCREMENT UNIQUE,
-    city_name VARCHAR(45) NOT NULL UNIQUE,
-    PRIMARY KEY (city_id)
-   )
-ENGINE=InnoDB
-CHARACTER SET utf8mb4
-COLLATE utf8mb4_0900_ai_ci;
-
--- Insert dev_status options
-LOAD DATA LOCAL INFILE './output/cities.csv'
-INTO TABLE city
-  CHARACTER SET utf8mb4
-  FIELDS TERMINATED BY '\t'
-  -- FIELDS TERMINATED BY ','
-  ENCLOSED BY '"'
-  LINES TERMINATED BY '\n'
-  -- LINES TERMINATED BY '\r\n'
-  IGNORE 1 LINES
-  (city_name);
-
 
 --
 -- Business Temporary
@@ -153,9 +75,9 @@ CREATE TABLE IF NOT EXISTS tmp_business
     state_name VARCHAR(45),
     neighborhood VARCHAR(100),
     postal_code VARCHAR(15),
-    latitude DECIMAL,
-    longitude DECIMAL,
-    business_stars DECIMAL,
+    latitude DECIMAL(10,2),
+    longitude DECIMAL(10,2),
+    business_stars DECIMAL(10,2),
     business_review_count INTEGER,
     is_open TINYINT,
     attire_name VARCHAR(45),
@@ -167,17 +89,95 @@ ENGINE=InnoDB
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_0900_ai_ci;
 
--- LOAD DATA LOCAL INFILE '/Users/Chris/Documents/SI_664/week4/SI664-scripts/scripts/input/csv/yelp_full_businesses.csv'
-LOAD DATA LOCAL INFILE '/Users/Chris/Documents/SI_664/week4/SI664-scripts/scripts/input/csv/SMALL_yelp_full_businesses.csv'
+-- LOAD DATA LOCAL INFILE './input/csv/yelp_full_businesses.csv'
+LOAD DATA LOCAL INFILE './input/csv/SMALL_yelp_full_businesses.csv'
 INTO TABLE tmp_business
   CHARACTER SET utf8mb4
   FIELDS TERMINATED BY ','
-  -- FIELDS TERMINATED BY ','
   ENCLOSED BY '"'
   LINES TERMINATED BY '\n'
-  -- LINES TERMINATED BY '\r\n'
   IGNORE 1 LINES
   (yelp_business_id, business_name, neighborhood, address, city_name, state_name, postal_code, latitude, longitude, business_stars, business_review_count, is_open, categories, attire_name, noise_name);
+
+-- --
+-- -- State
+-- --
+
+
+
+CREATE TABLE IF NOT EXISTS state
+  (
+    state_id INTEGER NOT NULL AUTO_INCREMENT UNIQUE,
+    state_abbrev VARCHAR(45) NOT NULL UNIQUE,
+    PRIMARY KEY (state_id)
+   )
+ENGINE=InnoDB
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_0900_ai_ci;
+
+LOAD DATA LOCAL INFILE './output/states.csv'
+INTO TABLE state
+  CHARACTER SET utf8mb4
+  FIELDS TERMINATED BY '\t'
+  ENCLOSED BY '"'
+  LINES TERMINATED BY '\n'
+  IGNORE 1 LINES
+  (state_abbrev);
+
+
+
+--
+-- City
+--
+ 
+CREATE TABLE IF NOT EXISTS tmp_city
+  (
+    city_id INTEGER NOT NULL AUTO_INCREMENT UNIQUE,
+    city_name VARCHAR(45) NOT NULL UNIQUE,
+    PRIMARY KEY (city_id)
+   )
+ENGINE=InnoDB
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_0900_ai_ci;
+
+LOAD DATA LOCAL INFILE './output/cities.csv'
+INTO TABLE tmp_city
+  CHARACTER SET utf8mb4
+  FIELDS TERMINATED BY '\t'
+  ENCLOSED BY '"'
+  LINES TERMINATED BY '\n'
+  IGNORE 1 LINES
+  (city_name);
+
+
+
+--
+-- City
+--
+ 
+CREATE TABLE IF NOT EXISTS city
+  (
+    city_id INTEGER NOT NULL AUTO_INCREMENT UNIQUE,
+    city_name VARCHAR(45) NOT NULL UNIQUE,
+    state_id INTEGER,
+    PRIMARY KEY (city_id),
+    FOREIGN KEY (state_id) REFERENCES state(state_id)
+    ON DELETE CASCADE ON UPDATE CASCADE
+   )
+ENGINE=InnoDB
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_0900_ai_ci;
+
+INSERT IGNORE INTO city (
+    city_name,
+    state_id
+)
+SELECT tbs.city_name, st.state_id
+  FROM tmp_business tbs
+       LEFT JOIN state st
+              ON TRIM(tbs.state_name) = TRIM(st.state_abbrev)
+ORDER BY tbs.city_name;
+
 
 
 --
@@ -192,19 +192,16 @@ CREATE TABLE IF NOT EXISTS business
     noise_level_id INTEGER,
     attire_id INTEGER,
     city_id INTEGER,
-    state_id INTEGER,
     address VARCHAR(100),
     neighborhood VARCHAR(100),
     postal_code VARCHAR(15),
-    latitude DECIMAL,
-    longitude DECIMAL,
-    business_stars DECIMAL,
+    latitude DECIMAL(10,2),
+    longitude DECIMAL(10,2),
+    business_stars DECIMAL(10,2),
     business_review_count INTEGER,
     is_open TINYINT,
     PRIMARY KEY (business_id),
     FOREIGN KEY (city_id) REFERENCES city(city_id)
-    ON DELETE CASCADE ON UPDATE CASCADE,
-    FOREIGN KEY (state_id) REFERENCES state(state_id)
     ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (noise_level_id) REFERENCES noise_level(noise_level_id)
     ON DELETE CASCADE ON UPDATE CASCADE,
@@ -221,7 +218,6 @@ INSERT IGNORE INTO business (
     address,
     neighborhood,
     city_id,
-    state_id,
     attire_id,
     noise_level_id,
     postal_code,
@@ -231,7 +227,7 @@ INSERT IGNORE INTO business (
     business_review_count,
     is_open
 )
-SELECT bs.business_name, bs.yelp_business_id, bs.address, bs.neighborhood, cit.city_id, st.state_id, atr.attire_id, noi.noise_level_id,
+SELECT bs.business_name, bs.yelp_business_id, bs.address, bs.neighborhood, cit.city_id, atr.attire_id, noi.noise_level_id,
        bs.postal_code, bs.latitude, bs.longitude, bs.business_stars, bs.business_review_count, bs.is_open
   FROM tmp_business bs
        LEFT JOIN city cit
@@ -243,6 +239,7 @@ SELECT bs.business_name, bs.yelp_business_id, bs.address, bs.neighborhood, cit.c
        LEFT JOIN noise_level noi
               ON TRIM(bs.noise_name) = TRIM(noi.noise)
 ORDER BY bs.business_name;
+
 
 
 --
@@ -266,17 +263,16 @@ ENGINE=InnoDB
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_0900_ai_ci;
 
--- LOAD DATA LOCAL INFILE '/Users/Chris/Documents/SI_664/week4/SI664-scripts/scripts/input/csv/yelp_user.csv'
-LOAD DATA LOCAL INFILE '/Users/Chris/Documents/SI_664/week4/SI664-scripts/scripts/input/csv/SMALL_yelp_user.csv'
+-- LOAD DATA LOCAL INFILE './input/csv/yelp_user.csv'
+LOAD DATA LOCAL INFILE './input/csv/SMALL_yelp_user.csv'
 INTO TABLE user
   CHARACTER SET utf8mb4
   FIELDS TERMINATED BY ','
-  -- FIELDS TERMINATED BY ','
   ENCLOSED BY '"'
   LINES TERMINATED BY '\n'
---   LINES TERMINATED BY '\r\n'
   IGNORE 1 LINES
   (yelp_user_id, user_name, review_count, yelper_since, @dummy, useful, funny, cool, @dummy, @dummy, average_stars, @dummy, @dummy, @dummy, @dummy, @dummy, @dummy, @dummy, @dummy, @dummy, @dummy, @dummy);
+
 
 
 -- --
@@ -289,7 +285,7 @@ CREATE TABLE IF NOT EXISTS tmp_review
     yelp_review_id VARCHAR(45),
     yelp_user_id VARCHAR(45),
     yelp_business_id VARCHAR(45),
-    stars DECIMAL,
+    stars DECIMAL(10,2),
     date_created DATE,
     review_text TEXT,
     PRIMARY KEY (review_id)
@@ -298,29 +294,28 @@ ENGINE=InnoDB
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_0900_ai_ci;
 
--- LOAD DATA LOCAL INFILE '/Users/Chris/Documents/SI_664/week4/SI664-scripts/scripts/input/csv/yelp_review.csv'
-LOAD DATA LOCAL INFILE '/Users/Chris/Documents/SI_664/week4/SI664-scripts/scripts/input/csv/SMALL_yelp_review.csv'
+-- LOAD DATA LOCAL INFILE './input/csv/yelp_review.csv'
+LOAD DATA LOCAL INFILE './input/csv/SMALL_yelp_review.csv'
 INTO TABLE tmp_review
   CHARACTER SET utf8mb4
   FIELDS TERMINATED BY ','
-  -- FIELDS TERMINATED BY ','
   ENCLOSED BY '"'
   LINES TERMINATED BY '\n'
---   LINES TERMINATED BY '\r\n'
   IGNORE 1 LINES
   (yelp_review_id, yelp_user_id, yelp_business_id, stars, date_created, review_text, @dummy, @dummy, @dummy);
+
+
 
 --
 -- Review (Many-To-Many)
 --
-
 
 CREATE TABLE IF NOT EXISTS review
   (
     review_id INTEGER NOT NULL AUTO_INCREMENT UNIQUE,
     business_id INTEGER,
     user_id INTEGER,
-    stars DECIMAL,
+    stars DECIMAL(10,2),
     date_created DATE,
     review_text TEXT,
     PRIMARY KEY (review_id),
@@ -332,6 +327,8 @@ CREATE TABLE IF NOT EXISTS review
 ENGINE=InnoDB
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_0900_ai_ci;
+
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
 
 INSERT IGNORE INTO review (
     business_id,
@@ -348,20 +345,6 @@ SELECT  bs.business_id, usr.user_id, trv.stars, trv.date_created, trv.review_tex
               ON TRIM(trv.yelp_user_id) = TRIM(usr.yelp_user_id)
   ORDER BY trv.stars, trv.date_created, trv.review_text;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+DROP TABLE tmp_review;
+DROP TABLE tmp_business;
+DROP TABLE tmp_city;

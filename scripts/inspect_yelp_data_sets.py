@@ -34,14 +34,39 @@ def main(argv=None):
 	# Creating small sample of data:
 	business_json = './input/json/yelp_academic_dataset_business.json'
 	business_df = pd.read_json(business_json, lines=True, encoding='utf8')
+	## Creating full clean business csv
+	attributes_df = business_df[['business_id','attributes']]
+	attire = []
+	noise = []
+	for val in attributes_df['attributes']:
+		try:
+			attire.append(val['RestaurantsAttire'])
+		except:
+			attire.append("")
+		try:
+			noise.append(val['NoiseLevel'])
+		except:
+			noise.append("")
+	attributes_df['Attire'] = pd.Series(attire)
+	attributes_df['Noise'] = pd.Series(noise)
+	attributes_df = attributes_df.drop('attributes', axis=1)
+
+	businesses = pd.read_csv('./input/csv/yelp_business.csv')
+	full_data = pd.merge(businesses, attributes_df, how='inner', on='business_id')
+	for col in full_data.columns:
+		full_data[col] = full_data[col].fillna('Null').astype(str)
+		full_data[col] = full_data[col].apply(lambda x: x.strip('""""'))
+	full_data_small = full_data.sample(2000)
+	full_data_small.to_csv('SMALL_yelp_full_businesses.csv', quotechar='"', index=False)
 
 	user_df = pd.read_csv('input/csv/yelp_user.csv')
-	user_df_small = user_df.iloc[:1000]
+	user_df_small = user_df.sample(2000)
 	user_df_small.to_csv('SMALL_yelp_user.csv', quotechar='"', index=False)
 
-	review_df = pd.read_csv('input/csv/yelp_review.csv')
-	review_df_small = review_df.iloc[:5000]
-	review_df_small.to_csv('SMALL_yelp_review.csv', quotechar='"', index=False)
+	review_df = pd.read_csv('input/csv/yelp_review.csv', converters={'text':lambda x:x.replace('/n/n','')})
+	review_df = review_df.replace('\n','', regex=True)
+	review_with_user_and_business = review_df[(review_df['user_id'].isin(user_df_small['user_id']) == True) & (review_df['business_id'].isin(full_data_small['business_id']) == True)]
+	review_with_user_and_business.to_csv('SMALL_yelp_review.csv', quotechar='"', index=False)
 	# Setting logging format and default level
 	logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG)
 
@@ -104,30 +129,7 @@ def main(argv=None):
 	# noise_csv = './output/noise.csv'
 	# write_series_to_csv(pd.Series(noise), noise_csv, '\t', False)
 
-	## Creating full clean business csv
-	attributes_df = business_df[['business_id','attributes']]
-	attire = []
-	noise = []
-	for val in attributes_df['attributes']:
-		try:
-			attire.append(val['RestaurantsAttire'])
-		except:
-			attire.append("")
-		try:
-			noise.append(val['NoiseLevel'])
-		except:
-			noise.append("")
-	attributes_df['Attire'] = pd.Series(attire)
-	attributes_df['Noise'] = pd.Series(noise)
-	attributes_df = attributes_df.drop('attributes', axis=1)
 
-	businesses = pd.read_csv('./input/csv/yelp_business.csv')
-	full_data = pd.merge(businesses, attributes_df, how='inner', on='business_id')
-	for col in full_data.columns:
-		full_data[col] = full_data[col].fillna('Null').astype(str)
-		full_data[col] = full_data[col].apply(lambda x: x.strip('""""'))
-	full_data_small = full_data.iloc[:1000]
-	full_data_small.to_csv('SMALL_yelp_full_businesses.csv', quotechar='"', index=False)
 
 def extract_filtered_series(data_frame, column_name):
 	"""
