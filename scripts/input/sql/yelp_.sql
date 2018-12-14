@@ -16,7 +16,7 @@
 --
 
 SET FOREIGN_KEY_CHECKS=0;
-DROP TABLE IF EXISTS noise_level, category, attire, business_category, city, state, user, review, business, tmp_business, tmp_review;
+DROP TABLE IF EXISTS noise_level, category, attire, city, state, user, review, business, tmp_business, tmp_review;
 SET FOREIGN_KEY_CHECKS=1;
 
 -- SET FOREIGN_KEY_CHECKS=0;
@@ -231,8 +231,8 @@ INSERT IGNORE INTO business (
     business_review_count,
     is_open
 )
-SELECT bs.business_name, bs.yelp_business_id, bs.address, bs.neighborhood, cit.city_id, st.state_id, noi.noise_level_id,
-       atr.attire_id, bs.postal_code, bs.latitude, bs.longitude, bs.business_stars, bs.business_review_count, bs.is_open
+SELECT bs.business_name, bs.yelp_business_id, bs.address, bs.neighborhood, cit.city_id, st.state_id, atr.attire_id, noi.noise_level_id,
+       bs.postal_code, bs.latitude, bs.longitude, bs.business_stars, bs.business_review_count, bs.is_open
   FROM tmp_business bs
        LEFT JOIN city cit
               ON TRIM(bs.city_name) = TRIM(cit.city_name)
@@ -246,25 +246,6 @@ ORDER BY bs.business_name;
 
 
 --
--- business_category                                            (NEEDS FOREIGN KEY MAPPING) M2M
---
-
-
--- CREATE TABLE IF NOT EXISTS business_category
---   (
---     category_id INTEGER,
---     business_id INTEGER,
---     FOREIGN KEY (category_id) REFERENCES category(category_id)
---     ON DELETE CASCADE ON UPDATE CASCADE,
---     FOREIGN KEY (business_id) REFERENCES business(business_id)
---     ON DELETE CASCADE ON UPDATE CASCADE
---    )
--- ENGINE=InnoDB
--- CHARACTER SET utf8mb4
--- COLLATE utf8mb4_0900_ai_ci;
-
-
---
 -- Users
 --
 
@@ -274,8 +255,10 @@ CREATE TABLE IF NOT EXISTS user
     user_name VARCHAR(45) NOT NULL,
     review_count INT NOT NULL,
     yelper_since DATE,
-    elite VARCHAR(10),
-    average_stars DECIMAL,
+    useful INTEGER,
+    cool INTEGER,
+    funny INTEGER,
+    average_stars DECIMAL(10,2),
     yelp_user_id VARCHAR(45),
     PRIMARY KEY (user_id)
   )
@@ -293,7 +276,7 @@ INTO TABLE user
   LINES TERMINATED BY '\n'
 --   LINES TERMINATED BY '\r\n'
   IGNORE 1 LINES
-  (yelp_user_id, user_name, review_count, yelper_since, @dummy, @dummy, @dummy, @dummy, @dummy, elite, average_stars, @dummy, @dummy, @dummy, @dummy, @dummy, @dummy, @dummy, @dummy, @dummy, @dummy, @dummy);
+  (yelp_user_id, user_name, review_count, yelper_since, @dummy, useful, funny, cool, @dummy, @dummy, average_stars, @dummy, @dummy, @dummy, @dummy, @dummy, @dummy, @dummy, @dummy, @dummy, @dummy, @dummy);
 
 
 -- --
@@ -328,51 +311,15 @@ INTO TABLE tmp_review
   (yelp_review_id, yelp_user_id, yelp_business_id, stars, date_created, review_text, @dummy, @dummy, @dummy);
 
 --
--- Review                                               NEEDS TO BE CHANGED - M2M
+-- Review (Many-To-Many)
 --
-
--- CREATE TABLE IF NOT EXISTS review
---   (
---     review_id INTEGER NOT NULL AUTO_INCREMENT UNIQUE,
---     user_id INTEGER,
---     business_id INTEGER,
---     yelp_review_id VARCHAR(45),
---     stars DECIMAL,
---     date_created DATE,
---     review_text TEXT,
---     PRIMARY KEY (review_id),
---     FOREIGN KEY (user_id) REFERENCES user(user_id)
---     ON DELETE CASCADE ON UPDATE CASCADE,
---     FOREIGN KEY (business_id) REFERENCES business(business_id)
---     ON DELETE CASCADE ON UPDATE CASCADE
---   )
--- ENGINE=InnoDB
--- CHARACTER SET utf8mb4
--- COLLATE utf8mb4_0900_ai_ci;
-
--- INSERT IGNORE INTO review (
---     user_id,
---     business_id,
---     yelp_review_id,
---     stars,
---     date_created,
---     review_text
--- )
--- SELECT trv.yelp_review_id, trv.stars, trv.date_created, trv.review_text, bs.business_id, usr.user_id
---   FROM tmp_review trv
---        INNER JOIN business bs
---               ON TRIM(trv.yelp_business_id) = TRIM(bs.yelp_business_id)
---        INNER JOIN user usr
---               ON TRIM(trv.yelp_user_id) = TRIM(usr.yelp_user_id);
-
 
 
 CREATE TABLE IF NOT EXISTS review
   (
     review_id INTEGER NOT NULL AUTO_INCREMENT UNIQUE,
-    user_id INTEGER,
     business_id INTEGER,
-    yelp_review_id VARCHAR(45),
+    user_id INTEGER,
     stars DECIMAL,
     date_created DATE,
     review_text TEXT,
@@ -388,23 +335,19 @@ COLLATE utf8mb4_0900_ai_ci;
 
 INSERT IGNORE INTO review (
     business_id,
-    yelp_review_id,
+    user_id,
     stars,
     date_created,
     review_text
 )
-SELECT trv.yelp_review_id, trv.stars, trv.date_created, trv.review_text, bs.business_id
+SELECT  bs.business_id, usr.user_id, trv.stars, trv.date_created, trv.review_text
   FROM tmp_review trv
        INNER JOIN business bs
-              ON TRIM(trv.yelp_business_id) = TRIM(bs.yelp_business_id);
-
-INSERT IGNORE INTO review (
-    user_id
-)
-SELECT usr.user_id
-  FROM tmp_review trv
+              ON TRIM(trv.yelp_business_id) = TRIM(bs.yelp_business_id)
        INNER JOIN user usr
-              ON TRIM(trv.yelp_user_id) = TRIM(usr.yelp_user_id);
+              ON TRIM(trv.yelp_user_id) = TRIM(usr.yelp_user_id)
+  ORDER BY trv.stars, trv.date_created, trv.review_text;
+
 
 
 
